@@ -1,0 +1,78 @@
+---
+title: "NYPD Shooting Incident Data Report"
+output: pdf_document
+date: "2024-05-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+
+```
+
+## NYPD Shooting Incident Data Report
+
+The data is from the <https://catalog.data.gov/dataset> page. 
+
+Full name : NYPD Shooting Incident Data (Historic)
+
+```{r data}
+inc_data <- read.csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+inc_data <- inc_data %>% 
+  mutate(OCCUR_DATE = mdy_hms(paste(OCCUR_DATE, OCCUR_TIME))) %>% 
+  select(c(INCIDENT_KEY, OCCUR_DATE,OCCUR_TIME, BORO, STATISTICAL_MURDER_FLAG, 
+           PERP_AGE_GROUP, PERP_SEX, PERP_RACE, VIC_AGE_GROUP, VIC_SEX, VIC_RACE))
+
+#Removing incorrect data (value 1022) from teh VIC_AGE_GROUP
+inc_data$VIC_AGE_GROUP[inc_data$VIC_AGE_GROUP == 1022] <- "UNKNOWN"
+
+summary(inc_data)
+```
+
+Kept the following fields: INCIDENT_KEY, OCCUR_DATE, BORO, STATISTICAL_MURDER_FLAG, 
+           PERP_AGE_GROUP, PERP_SEX, PERP_RACE, VIC_AGE_GROUP, VIC_SEX, VIC_RACE
+
+The data includes the Perpetrator's data and the victim's data. In many cases the perpetrator was not caught, so I assume in those cases the data can be missing. 
+
+## Data visualization
+
+My analysis is focused on the victims. Which age-groups, genders and race are more likely to get victimized? And, how does it change based on Location?
+
+```{r visualization}
+
+ggplot(data = inc_data, mapping = aes(x=VIC_SEX) ) + geom_bar()+
+  ggtitle("Victim's gender") 
+
+ggplot(data = inc_data, mapping = aes(x=VIC_AGE_GROUP, fill= VIC_SEX) ) + geom_bar()+
+  scale_fill_manual("legend", values = c("M"="#3498DB", "F"="#F7DC6F", "U"="#ABB2B9"))+
+  ggtitle("Victim's Age per Gender")
+
+ggplot(data = inc_data, mapping = aes(x=VIC_RACE, fill= VIC_SEX) ) + geom_bar()+
+  scale_fill_manual("legend", values = c("M"="#3498DB", "F"="#F7DC6F", "U"="#ABB2B9"))+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  ggtitle("Victim's Race per Gender")
+
+ggplot(data = inc_data, mapping = aes(x=BORO, fill= VIC_RACE) ) + geom_bar()+
+  theme(legend.position="bottom")+
+  ggtitle("Victim's Location per Race")
+
+```
+
+## General conclusions
+
+The majority of the victims are black males between the age of 28 and 44.
+
+It is also visible, that the second most targeted group is Black Hispanic or White Hispanic people.
+
+In terms of incidents per location Brookly in the most affected area closely followed by Bronx. 
+
+## Source of Bias
+
+While, the analysis above and the data seems to be correct. I'd like to highlight that this data set should be analysed together with population datasets. 
+
+Looking at the number of shooting incidents without comparing it to how many people live in an area leaves us with with an expectation that Brooklyn is dangerious. But it could be that these incidents are much more likely to happen to an individual elsewhere. 
+
+I'd also like to highlight that this dataset is collected by Police - Not reported incidents are missing from it. 
+
